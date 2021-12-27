@@ -1,25 +1,25 @@
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
-  "icons": [
-    {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+  "name": "TTabs",
+  "description": "Stash and restore your workspace with ease! Go to https://github.com/lvliangxiong/ttabs for more information.",
+  "version": "0.1.0",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Click to see TTabs Records",
+    "default_icon": {
+      "16": "/ttabs_16.png",
+      "32": "/ttabs_32.png",
+      "64": "/ttabs_64.png",
+      "128": "/ttabs_128.png"
     }
-  ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  },
+  "icons": {
+    "16": "/ttabs_16.png",
+    "32": "/ttabs_32.png",
+    "64": "/ttabs_64.png",
+    "128": "/ttabs_128.png"
+  },
+  "permissions": [
+    "storage", "tabs", "tabGroups", "activeTab"
+  ]
 }
