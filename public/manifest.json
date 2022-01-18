@@ -1,7 +1,8 @@
 {
   "name": "TTabs",
+  "author": "LiangxiongLyu",
   "description": "Stash and restore your workspace with ease! Go to https://github.com/lvliangxiong/ttabs for more information.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "manifest_version": 3,
   "action": {
     "default_popup": "index.html",
@@ -19,7 +20,5 @@
     "64": "/ttabs_64.png",
     "128": "/ttabs_128.png"
   },
-  "permissions": [
-    "storage", "tabs", "tabGroups", "activeTab"
-  ]
+  "permissions": ["storage", "tabs", "tabGroups", "activeTab"]
 }
