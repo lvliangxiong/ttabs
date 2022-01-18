@@ -27,6 +27,7 @@ interface TTabGroup {
   collapsed: boolean;
   tabs: TTab[];
   created_at: number;
+  updated_at: number;
 }
 
 interface TTab {
@@ -81,6 +82,7 @@ class App extends Component<IProps, IState> {
       (title = this.ttabGroupTitleInputRef.current.state.value);
 
     let m = new Map<Number, TTabGroup>(); // tab group id ==> TTabGroup
+    let now = new Date().getTime();
 
     chrome &&
       chrome.tabGroups &&
@@ -107,13 +109,21 @@ class App extends Component<IProps, IState> {
                       url: tab.url,
                     });
                 });
+
+                let created_at = now;
+                let target = this.state.ttab_groups.find(
+                  (group) => group.title === (tg.title || "")
+                );
+                target && (created_at = target.created_at);
+
                 m.set(tg.id, {
                   id: tg.id,
                   collapsed: tg.collapsed,
                   color: tg.color,
                   title: tg.title || "",
                   tabs: ttabs,
-                  created_at: new Date().getTime(),
+                  created_at: created_at,
+                  updated_at: now,
                 });
               }
             );
@@ -147,7 +157,8 @@ class App extends Component<IProps, IState> {
                     color: "grey",
                     title: title,
                     tabs: ttabs,
-                    created_at: new Date().getTime(),
+                    created_at: now,
+                    updated_at: now,
                   });
 
                 let tgsWaitingForSaving: TTabGroup[] = [];
@@ -259,6 +270,33 @@ class App extends Component<IProps, IState> {
           }
         );
       }
+    });
+
+    // Update restored tab group's updated_at, also it'll rank the first
+    let tgRestored = tgWaitingForRestore;
+
+    chrome.storage.local.get(APP_STATE_KEY, (data) => {
+      chrome.storage.local.set({
+        [APP_STATE_KEY]: {
+          ttab_groups: [
+            tgRestored,
+            ...data[APP_STATE_KEY].ttab_groups.filter(
+              (group: TTabGroup) => group.title !== tgRestored.title
+            ),
+          ],
+        },
+      });
+    });
+
+    this.setState((state, _props) => {
+      return {
+        ttab_groups: [
+          tgRestored,
+          ...state.ttab_groups.filter(
+            (group: TTabGroup) => group.title !== tgRestored.title
+          ),
+        ],
+      };
     });
   }
 
