@@ -1,303 +1,291 @@
 import react, { Component } from "react";
+import { Button, Tooltip, Row, Col, Popconfirm, Input, Tag, Image } from "antd";
 import {
-  Button,
-  Menu,
-  Tooltip,
-  Row,
-  Col,
-  Popconfirm,
-  Modal,
-  Input,
-  List,
-} from "antd";
-import {
-  BookOutlined,
   RollbackOutlined,
   DeleteOutlined,
-  LinkOutlined,
   SaveOutlined,
 } from "@ant-design/icons";
 import { grey } from "@ant-design/colors";
 import "antd/dist/antd.min.css";
 import "./App.less";
 import React from "react";
+import { Tabs } from "antd";
 
-const { SubMenu } = Menu;
+const { TabPane } = Tabs;
+
+const tooltipColor = grey[2];
+const tooltipPopupDelay = 0.5;
 
 interface IState {
-  openedWorkSpaceKeys: Array<string>;
-  workspaces: Array<WorkSpace>;
-  customWorkspaceNameModalVisibility: boolean;
+  ttab_groups: TTabGroup[];
 }
 
-interface WorkSpace {
-  name: string;
-  tabs: Array<Tab>;
-  created_at: Number;
+interface TTabGroup {
+  id: number;
+  title: string;
+  color: string;
+  collapsed: boolean;
+  tabs: TTab[];
+  created_at: number;
 }
 
-interface Tab {
-  name: string;
+interface TTab {
+  id: number | undefined;
+  title: string;
+  fav_icon_url: string | undefined;
   url: string;
 }
+
+const APP_STATE_KEY = "state";
 
 interface IProps {}
 
 class App extends Component<IProps, IState> {
-  workspaceNameInputRef: react.RefObject<Input>;
+  ttabGroupTitleInputRef: react.RefObject<Input>;
+
+  emptyState: IState;
 
   constructor(props: IProps) {
     super(props);
 
-    this.workspaceNameInputRef = React.createRef();
+    this.ttabGroupTitleInputRef = React.createRef();
+
+    this.emptyState = {
+      ttab_groups: [],
+    };
 
     // State init, shouldn't use setState method
-    this.state = {
-      openedWorkSpaceKeys: [],
-      workspaces: [],
-      customWorkspaceNameModalVisibility: false,
-    };
+    this.state = this.emptyState;
   }
 
-  // Fetch local saved history when App is rendered for t he first time
+  // Fetch local saved history when App is rendered for the first time
   async componentDidMount() {
     // grab tabs information from local storage, set them in the state,
     // finally they will be shown them in the popup page
     if (chrome && chrome.storage) {
-      // Normal circumstance
-      chrome.storage.local.get(["workspaces"], (data) => {
-        if (data.workspaces) {
-          this.setState({
-            openedWorkSpaceKeys: ["workspace 1"],
-            workspaces: data.workspaces,
-          });
+      chrome.storage.local.get([APP_STATE_KEY], (data) => {
+        if (data[APP_STATE_KEY]) {
+          this.setState(data.state);
         } else {
-          chrome.storage.local.set({ workspaces: [] });
+          chrome.storage.local.set({ [APP_STATE_KEY]: this.emptyState });
         }
-      });
-    } else {
-      // For development
-      this.setState({
-        openedWorkSpaceKeys: ["workspace 1"],
-        workspaces: [
-          {
-            name: "workspace 1",
-            created_at: Date.now(),
-            tabs: [
-              {
-                name: "test link 1",
-                url: "http://github.com/lvliangxiong",
-              },
-              {
-                name: "test link 2",
-                url: "http://github.com/lvliangxiong",
-              },
-              {
-                name: "test link 3",
-                url: "http://github.com/lvliangxiong",
-              },
-            ],
-          },
-          {
-            name: "workspace 2",
-            created_at: Date.now() - 100,
-            tabs: [
-              {
-                name: "test link 1",
-                url: "http://github.com/lvliangxiong",
-              },
-              {
-                name: "test link 2",
-                url: "http://github.com/lvliangxiong",
-              },
-              {
-                name: "test link 3",
-                url: "http://github.com/lvliangxiong",
-              },
-            ],
-          },
-        ],
       });
     }
   }
 
-  // callback to clear all workspaces saved
-  handleClear = () => {
-    chrome && chrome.storage && chrome.storage.local.clear();
-
-    this.setState({
-      workspaces: [],
-      openedWorkSpaceKeys: [],
-    });
-  };
-
-  // callback to save tabs in the current active window, also close the modal
+  // callback to save tabs in the current active window
   handleSaveTabs = () => {
-    let name = this.defaultWorkspaceName();
-    if (
-      this.workspaceNameInputRef.current &&
-      this.workspaceNameInputRef.current.state.value
-    ) {
-      name = this.workspaceNameInputRef.current.state.value;
-    }
+    let title = defaultTTabGroupTitle();
+    this.ttabGroupTitleInputRef.current &&
+      this.ttabGroupTitleInputRef.current.state.value &&
+      (title = this.ttabGroupTitleInputRef.current.state.value);
 
-    // query tabs information, then save them to the local storage
+    let m = new Map<Number, TTabGroup>(); // tab group id ==> TTabGroup
+
     chrome &&
-      chrome.tabs &&
-      chrome.tabs.query(
-        // grab tabs in the current window
+      chrome.tabGroups &&
+      chrome.tabGroups.query(
         {
-          currentWindow: true,
+          windowId: chrome.windows.WINDOW_ID_CURRENT,
         },
-        (tabs) => {
-          // 1. init a workspace for current window's tabs
-          const w: WorkSpace = {
-            name: name,
-            tabs: [],
-            created_at: Date.now(),
-          };
-
-          // 2. tabs information
-          tabs.forEach((tab) => {
-            if (tab.id) {
-              // tabs should have url at least
-              if (tab.url) {
-                const tt: Tab = {
-                  name: "", // default to empty string
-                  url: tab.url,
-                };
-                if (tab.title) {
-                  tt.name = tab.title;
-                }
-                w.tabs.push(tt);
+        (tgs: chrome.tabGroups.TabGroup[]) => {
+          tgs.forEach((tg: chrome.tabGroups.TabGroup) => {
+            let ttabs: TTab[] = [];
+            chrome.tabs.query(
+              {
+                windowId: tg.windowId,
+                groupId: tg.id,
+              },
+              (tabs: chrome.tabs.Tab[]) => {
+                tabs.forEach((tab: chrome.tabs.Tab) => {
+                  // Collect tab information, url is required
+                  tab.url &&
+                    ttabs.push({
+                      fav_icon_url: tab.favIconUrl,
+                      id: tab.id,
+                      title: tab.title || "",
+                      url: tab.url,
+                    });
+                });
+                m.set(tg.id, {
+                  id: tg.id,
+                  collapsed: tg.collapsed,
+                  color: tg.color,
+                  title: tg.title || "",
+                  tabs: ttabs,
+                  created_at: new Date().getTime(),
+                });
               }
-            }
+            );
           });
 
-          // 1. Update chrome local storage
-          chrome.storage.local.get("workspaces", (data) => {
-            chrome.storage.local.set({
-              workspaces: [w, ...data.workspaces],
-            });
-          });
+          // ungrouped tabs
+          // tab group id : -1
+          chrome &&
+            chrome.tabs &&
+            chrome.tabs.query(
+              // grab tabs in the current window
+              {
+                currentWindow: true,
+                groupId: -1,
+              },
+              (tabs: chrome.tabs.Tab[]) => {
+                let ttabs: TTab[] = [];
+                tabs.forEach((tab: chrome.tabs.Tab) => {
+                  tab.url &&
+                    ttabs.push({
+                      id: tab.id,
+                      title: tab.title || "",
+                      fav_icon_url: tab.favIconUrl,
+                      url: tab.url,
+                    });
+                });
+                tabs.length &&
+                  m.set(-1, {
+                    id: -1,
+                    collapsed: true,
+                    color: "grey",
+                    title: title,
+                    tabs: ttabs,
+                    created_at: new Date().getTime(),
+                  });
 
-          // 2. Update App's state
-          this.setState((state, _props) => ({
-            openedWorkSpaceKeys: ["workspace 1"], // change opened menu to the newest created workspace
-            workspaces: [w, ...state.workspaces],
-            customWorkspaceNameModalVisibility: false, // close and reset the modal if no error occurs
-          }));
+                let tgsWaitingForSaving: TTabGroup[] = [];
+                m.forEach((v) => {
+                  tgsWaitingForSaving.push(v);
+                });
 
-          // 1 and 2 are independent
+                // Update chrome local storage
+                chrome.storage.local.get(APP_STATE_KEY, (data) => {
+                  chrome.storage.local.set({
+                    [APP_STATE_KEY]: {
+                      ttab_groups: [
+                        ...tgsWaitingForSaving,
+                        // tab group with the same title will be override
+                        ...data[APP_STATE_KEY].ttab_groups.filter(
+                          (group: TTabGroup) =>
+                            !tgsWaitingForSaving
+                              .map((tg) => tg.title)
+                              .includes(group.title)
+                        ),
+                      ],
+                    },
+                  });
+                });
+
+                // Update App's state
+                this.setState((state, _props) => {
+                  return {
+                    ttab_groups: [
+                      ...tgsWaitingForSaving,
+                      // tab group with the same title will be override
+                      ...state.ttab_groups.filter(
+                        (group: TTabGroup) =>
+                          !tgsWaitingForSaving
+                            .map((tg) => tg.title)
+                            .includes(group.title)
+                      ),
+                    ],
+                  };
+                });
+              }
+            );
         }
       );
   };
 
-  // callback to restore tabs in a saved workspace
-  handleRestoreWorkspace(workspaceName: string, workspaceCreatedAt: Number) {
-    const targetWorkspace = this.state.workspaces.find(
-      (workspace) =>
-        workspace.name === workspaceName &&
-        workspace.created_at === workspaceCreatedAt
+  // callback to clear all tab groups saved
+  handleClear = () => {
+    chrome &&
+      chrome.storage &&
+      chrome.storage.local.set({ [APP_STATE_KEY]: { ttab_groups: [] } }); // clear() is not used here
+
+    this.setState(this.emptyState);
+  };
+
+  // callback to restore tabs in a saved tab group
+  handleRestoreTabGroup(tgTitle: string) {
+    const tgWaitingForRestore = this.state.ttab_groups.find(
+      (tg) => tg.title === tgTitle
     );
 
-    // Open these saved Tabs in a separate window
-    targetWorkspace &&
-      targetWorkspace.tabs.length &&
-      chrome &&
-      chrome.storage &&
-      chrome.windows.create((wd) => {
-        if (wd) {
-          targetWorkspace.tabs.forEach((tab) => {
-            chrome.tabs.create({ url: tab.url, windowId: wd.id });
+    if (!tgWaitingForRestore || !tgWaitingForRestore.tabs.length) return;
+
+    chrome.windows.create((wd) => {
+      if (wd) {
+        tgWaitingForRestore.tabs.forEach((tab) => {
+          chrome.tabs.create({ url: tab.url, windowId: wd.id }, (tab) =>
+            console.log(tab.id)
+          );
+        });
+
+        if (tgWaitingForRestore.id === -1) {
+          // ungrouped tabs
+          return;
+        }
+
+        // Create a new tab group, add newly created tabs into it
+        chrome.tabs.query({ windowId: wd.id }, (tabs) => {
+          let tabIds: number[] = [];
+          tabs.forEach((tab) => {
+            tab.id && tabIds.push(tab.id);
           });
-          // close unnecessary the default new tab
-          chrome.tabs.query(
-            {
-              url: "chrome://newtab/",
-            },
-            (tabs) => {
-              tabs.forEach((tab) => {
-                if (tab && tab.id) {
-                  chrome.tabs.remove(tab.id);
-                }
+
+          chrome.tabs.group(
+            { tabIds: tabIds, createProperties: { windowId: wd.id } },
+            (groupId) => {
+              chrome.tabGroups.update(groupId, {
+                collapsed: false,
+                color: tgWaitingForRestore.color as chrome.tabGroups.ColorEnum,
+                title: tgWaitingForRestore.title,
               });
+
+              // close unnecessary the default new tab
+              chrome.tabs.query(
+                {
+                  url: "chrome://newtab/",
+                  windowId: wd.id,
+                },
+                (tabs) => {
+                  tabs.forEach((tab) => {
+                    if (tab && tab.id) {
+                      chrome.tabs.remove(tab.id);
+                    }
+                  });
+                }
+              );
             }
           );
-        }
-      });
+        });
+      }
+    });
   }
 
-  // callback to delete specified workspace
-  handleDeleteWorkspace(workspaceName: string, workspaceCreatedAt: Number) {
+  // callback to delete specified tab group
+  handleDeleteTabGroup(tgTitle: string) {
     // 1. Clear records from chrome local storage
     chrome &&
       chrome.storage &&
-      chrome.storage.local.get("workspaces", (data) => {
+      chrome.storage.local.get(APP_STATE_KEY, (data) => {
         chrome.storage.local.set({
-          workspaces: [
-            ...data.workspaces.filter(
-              (workspace: WorkSpace) =>
-                workspace.name !== workspaceName ||
-                workspace.created_at !== workspaceCreatedAt
-            ),
-          ],
+          [APP_STATE_KEY]: {
+            ttab_groups: [
+              ...data[APP_STATE_KEY].ttab_groups.filter(
+                (tg: TTabGroup) => tg.title !== tgTitle
+              ),
+            ],
+          },
         });
       });
 
     // 2. Clear records from App's State
     this.setState((state, _props) => ({
-      workspaces: state.workspaces.filter(
-        (workspace) =>
-          workspace.name !== workspaceName ||
-          workspace.created_at !== workspaceCreatedAt
-      ),
-      openedWorkSpaceKeys: ["workspace 1"],
-    }));
-  }
-
-  // callback to handle menu opened or closed, only one menu opened at most guaranteed
-  onOpenChange = (keys: string[]) => {
-    const allSubmenuKeys = this.state.workspaces.map(
-      (_workspace, i) => "workspace " + (i + 1)
-    );
-
-    // 筛选出关闭菜单事件的对应的菜单的 key
-    const menuWaitForOpen_key = keys.find(
-      (key) => this.state.openedWorkSpaceKeys.indexOf(key) === -1
-    );
-    if (
-      menuWaitForOpen_key &&
-      allSubmenuKeys.indexOf(menuWaitForOpen_key) !== -1
-    ) {
-      // 只打开该菜单
-      this.setState({
-        openedWorkSpaceKeys: [menuWaitForOpen_key],
-      });
-    } else {
-      // 关闭原菜单
-      this.setState({
-        openedWorkSpaceKeys: [],
-      });
-    }
-  };
-
-  defaultWorkspaceName(): string {
-    return "saved at " + new Date().toLocaleString();
-  }
-
-  setVisibilityOfCustomWorkspaceNameModal(visibility: boolean): void {
-    this.setState((state, _props) => ({
-      customWorkspaceNameModalVisibility: visibility,
+      ttab_groups: state.ttab_groups.filter((tg) => tg.title !== tgTitle),
     }));
   }
 
   render(): react.ReactNode {
-    const {
-      workspaces,
-      openedWorkSpaceKeys,
-      customWorkspaceNameModalVisibility,
-    } = this.state;
+    const { ttab_groups } = this.state;
 
     return (
       <div className="App">
@@ -305,29 +293,15 @@ class App extends Component<IProps, IState> {
         <br />
         <Row justify="space-around">
           <Col span={8}>
-            <Modal
-              title="Customize your workspace name:"
-              centered
-              visible={customWorkspaceNameModalVisibility}
-              onOk={this.handleSaveTabs}
-              onCancel={() =>
-                this.setVisibilityOfCustomWorkspaceNameModal(false)
-              }
-              width={500}
+            <Tooltip
+              title="Save tabs within current window"
+              color={tooltipColor}
+              mouseEnterDelay={tooltipPopupDelay}
             >
-              <Input
-                ref={this.workspaceNameInputRef}
-                placeholder={this.defaultWorkspaceName()}
-              />
-            </Modal>
-            <Tooltip title="Save tabs in this window" color={grey[2]}>
               <Button
                 block
-                className="btn-workspace-op"
                 icon={<SaveOutlined />}
-                onClick={() =>
-                  this.setVisibilityOfCustomWorkspaceNameModal(true)
-                }
+                onClick={this.handleSaveTabs}
               >
                 SAVE Tabs
               </Button>
@@ -341,102 +315,104 @@ class App extends Component<IProps, IState> {
               okText="Yes"
               cancelText="No"
             >
-              <Button
-                danger
-                block
-                className="btn-workspace-op"
-                icon={<DeleteOutlined />}
+              <Tooltip
+                title="Clear all saved tab groups"
+                color={tooltipColor}
+                mouseEnterDelay={tooltipPopupDelay}
               >
-                <Tooltip title="Clear all data" color={grey[2]}>
+                <Button danger block icon={<DeleteOutlined />}>
                   Clear All
-                </Tooltip>
-              </Button>
+                </Button>
+              </Tooltip>
             </Popconfirm>
           </Col>
         </Row>
         <br />
 
-        {/* Workspace display */}
-        <Menu
-          openKeys={openedWorkSpaceKeys}
-          onOpenChange={this.onOpenChange}
-          inlineIndent={18}
-          mode="inline" // vertical/inline
-          theme="light" // light/dark
-        >
-          {workspaces.map((workspace, i) => {
-            const workspaceKey: string = "workspace " + (i + 1);
-            // Workspace
-            return (
-              <SubMenu
-                key={workspaceKey}
-                title={
-                  <Tooltip
-                    title={
-                      "saved at " +
-                      new Date(workspace.created_at.valueOf()).toLocaleString()
-                    }
-                    color={grey[2]}
-                  >
-                    {workspace.name}
-                  </Tooltip>
-                }
-                icon={<BookOutlined />}
-              >
-                {/* Operation Buttons */}
-                <Row justify="space-around">
-                  <Col span={10}>
-                    <Button
-                      className="btn-workspace-op"
-                      icon={<RollbackOutlined />}
-                      onClick={this.handleRestoreWorkspace.bind(
-                        this,
-                        workspace.name,
-                        workspace.created_at
-                      )}
-                    >
-                      Restore
-                    </Button>
-                  </Col>
-                  <Col span={10}>
-                    <Button
-                      className="btn-workspace-op"
-                      icon={<DeleteOutlined />}
-                      onClick={this.handleDeleteWorkspace.bind(
-                        this,
-                        workspace.name,
-                        workspace.created_at
-                      )}
-                    >
-                      Delete
-                    </Button>
-                  </Col>
-                </Row>
-                {/* Tabs */}
-                <List
-                  itemLayout="horizontal"
-                  dataSource={workspace.tabs}
-                  style={{ marginLeft: "30px" }}
-                  renderItem={(tab) => (
-                    <List.Item>
-                      <LinkOutlined style={{ marginRight: "12px" }} />
-                      <List.Item.Meta
-                        title={
+        {/* TTabGroup display */}
+        {ttab_groups.map((tg, i) => {
+          const tgKey = `tg-${i + 1}`;
+          return (
+            // TTabGroup
+            <Tabs
+              type="card"
+              tabPosition="left"
+              tabBarExtraContent={{
+                left: (
+                  <div className="tab-group-title-wrapper">
+                    <Row align="middle">
+                      <Col span="6">
+                        <Row justify="start">
                           <Tooltip
-                            title={trimQueryAndHash(tab.url)}
-                            color={grey[2]}
+                            title={`saved at ${new Date(
+                              tg.created_at
+                            ).toLocaleString()}`}
+                            color={tooltipColor}
+                            mouseEnterDelay={tooltipPopupDelay}
                           >
-                            <a href={tab.url}>{tab.name}</a>
+                            <Tag color={tg.color}> {tg.title}</Tag>
                           </Tooltip>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
-              </SubMenu>
-            );
-          })}
-        </Menu>
+                        </Row>
+                      </Col>
+                      <Col span="18">
+                        <Row justify="end">
+                          <Button
+                            icon={<RollbackOutlined />}
+                            size="small"
+                            onClick={this.handleRestoreTabGroup.bind(
+                              this,
+                              tg.title
+                            )}
+                          >
+                            Restore
+                          </Button>
+                          <Button
+                            icon={<DeleteOutlined />}
+                            size="small"
+                            onClick={this.handleDeleteTabGroup.bind(
+                              this,
+                              tg.title
+                            )}
+                          >
+                            Delete
+                          </Button>
+                        </Row>
+                      </Col>
+                    </Row>
+                  </div>
+                ),
+              }}
+            >
+              {tg.tabs.map((tab, idx) => (
+                <TabPane
+                  tab={
+                    <div className="tab-list-wrapper">
+                      <Row>
+                        <Col span="1" style={{ marginTop: "3px" }}>
+                          <Row justify="start">
+                            <Image width={16} src={tab.fav_icon_url} />
+                          </Row>
+                        </Col>
+                        <Col offset={1} span="22">
+                          <Row justify="start">
+                            <Tooltip
+                              title={trimQueryAndHash(tab.url)}
+                              color={tooltipColor}
+                              mouseEnterDelay={tooltipPopupDelay}
+                            >
+                              <a href={tab.url}>{tab.title}</a>
+                            </Tooltip>
+                          </Row>
+                        </Col>
+                      </Row>
+                    </div>
+                  }
+                  key={`${tgKey}-tab-${idx + 1}`}
+                ></TabPane>
+              ))}
+            </Tabs>
+          );
+        })}
       </div>
     );
   }
@@ -445,6 +421,10 @@ class App extends Component<IProps, IState> {
 function trimQueryAndHash(url: string): string {
   const u = new URL(url);
   return u.toString().replace(u.hash, "").replace(u.search, "");
+}
+
+function defaultTTabGroupTitle(): string {
+  return new Date().toLocaleString();
 }
 
 export default App;
