@@ -1,8 +1,8 @@
 {
   "name": "TTabs",
   "author": "LiangxiongLyu",
-  "description": "Stash and restore your workspace with ease! Go to https://github.com/lvliangxiong/ttabs for more information.",
-  "version": "0.2.0",
+  "description": "Stash and restore your tab groups with ease! Go to https://github.com/lvliangxiong/ttabs for more information.",
+  "version": "0.2.1",
   "manifest_version": 3,
   "action": {
     "default_popup": "index.html",
@@ -20,5 +20,16 @@
     "64": "/ttabs_64.png",
     "128": "/ttabs_128.png"
   },
-  "permissions": ["storage", "tabs", "tabGroups", "activeTab"]
+  "permissions": ["storage", "tabs", "tabGroups", "activeTab"],
+  "commands": {
+    "Save Tabs": {
+      "suggested_key": {
+        "mac": "MacCtrl+S"
+      },
+      "description": "Save tabs within current window"
+    }
+  },
+  "background": {
+    "service_worker": "static/js/background.js"
+  }
 }
