@@ -219,44 +219,45 @@ class App extends Component<IProps, IState> {
           );
         });
 
-        if (tgWaitingForRestore.id === -1) {
-          // ungrouped tabs
-          return;
-        }
+        chrome.tabs.query(
+          {
+            url: "chrome://newtab/",
+            windowId: wd.id,
+          },
+          (tabs) => {
+            // close unnecessary the default new tab
+            tabs.forEach((tab) => {
+              if (tab && tab.id) {
+                chrome.tabs.remove(tab.id);
+              }
+            });
 
-        // Create a new tab group, add newly created tabs into it
-        chrome.tabs.query({ windowId: wd.id }, (tabs) => {
-          let tabIds: number[] = [];
-          tabs.forEach((tab) => {
-            tab.id && tabIds.push(tab.id);
-          });
+            if (tgWaitingForRestore.id === -1) {
+              // ungrouped tabs
+              return;
+            }
 
-          chrome.tabs.group(
-            { tabIds: tabIds, createProperties: { windowId: wd.id } },
-            (groupId) => {
-              chrome.tabGroups.update(groupId, {
-                collapsed: false,
-                color: tgWaitingForRestore.color as chrome.tabGroups.ColorEnum,
-                title: tgWaitingForRestore.title,
+            // Create a new tab group, add newly created tabs into it
+            chrome.tabs.query({ windowId: wd.id }, (tabs) => {
+              let tabIds: number[] = [];
+              tabs.forEach((tab) => {
+                tab.id && tabIds.push(tab.id);
               });
 
-              // close unnecessary the default new tab
-              chrome.tabs.query(
-                {
-                  url: "chrome://newtab/",
-                  windowId: wd.id,
-                },
-                (tabs) => {
-                  tabs.forEach((tab) => {
-                    if (tab && tab.id) {
-                      chrome.tabs.remove(tab.id);
-                    }
+              chrome.tabs.group(
+                { tabIds: tabIds, createProperties: { windowId: wd.id } },
+                (groupId) => {
+                  chrome.tabGroups.update(groupId, {
+                    collapsed: false,
+                    color:
+                      tgWaitingForRestore.color as chrome.tabGroups.ColorEnum,
+                    title: tgWaitingForRestore.title,
                   });
                 }
               );
-            }
-          );
-        });
+            });
+          }
+        );
       }
     });
   }
