@@ -1,4 +1,4 @@
-import react, { Component } from "react";
+import react, { ChangeEvent, Component, SyntheticEvent } from "react";
 import { Button, Tooltip, Row, Col, Popconfirm, Input, Tag, Image } from "antd";
 import {
   RollbackOutlined,
@@ -18,6 +18,7 @@ const tooltipPopupDelay = 0.5;
 
 interface IState {
   ttab_groups: TTabGroup[];
+  search_item: string;
 }
 
 interface TTabGroup {
@@ -53,6 +54,7 @@ class App extends Component<IProps, IState> {
 
     this.emptyState = {
       ttab_groups: [],
+      search_item: "",
     };
 
     // State init, shouldn't use setState method
@@ -323,8 +325,20 @@ class App extends Component<IProps, IState> {
     }));
   }
 
+  handleSearch = (e: { target: { value: string } }) => {
+    this.setState({
+      search_item: e.target.value,
+    });
+  };
+
   render(): react.ReactNode {
-    const { ttab_groups } = this.state;
+    let { ttab_groups, search_item: keyword } = this.state;
+
+    if (keyword) {
+      ttab_groups = ttab_groups.filter((tg) =>
+        tg.title.toLocaleLowerCase().includes(keyword.toLocaleLowerCase())
+      );
+    }
 
     return (
       <div className="App">
@@ -366,7 +380,13 @@ class App extends Component<IProps, IState> {
             </Popconfirm>
           </Col>
         </Row>
-        <br />
+
+        <Input
+          type="text"
+          style={{ width: "450px", margin: "10px 0px 10px 20px" }}
+          onChange={this.handleSearch}
+          placeholder="search in the tab group title"
+        ></Input>
 
         {/* TTabGroup display */}
         {ttab_groups.map((tg, i) => {
