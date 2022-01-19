@@ -2,7 +2,7 @@
   "name": "TTabs",
   "author": "LiangxiongLyu",
   "description": "Stash and restore your tab groups with ease! Go to https://github.com/lvliangxiong/ttabs for more information.",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "manifest_version": 3,
   "action": {
     "default_popup": "index.html",
