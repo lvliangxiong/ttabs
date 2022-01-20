@@ -1,15 +1,25 @@
-import react, { ChangeEvent, Component, SyntheticEvent } from "react";
-import { Button, Tooltip, Row, Col, Popconfirm, Input, Tag, Image } from "antd";
+import react, { Component } from "react";
+import {
+  Button,
+  Tooltip,
+  Row,
+  Col,
+  Popconfirm,
+  Input,
+  Tag,
+  Image,
+  Tabs,
+} from "antd";
 import {
   RollbackOutlined,
   DeleteOutlined,
   SaveOutlined,
+  RightOutlined,
+  DownOutlined,
 } from "@ant-design/icons";
 import { grey } from "@ant-design/colors";
 import "antd/dist/antd.min.css";
 import "./App.less";
-import React from "react";
-import { Tabs } from "antd";
 
 const { TabPane } = Tabs;
 
@@ -25,7 +35,7 @@ interface TTabGroup {
   id: number;
   title: string;
   color: string;
-  collapsed: boolean;
+  collapsed: boolean; // whether collapsed in the popup page
   tabs: TTab[];
   created_at: number;
   updated_at: number;
@@ -43,17 +53,42 @@ const APP_STATE_KEY = "state";
 interface IProps {}
 
 class App extends Component<IProps, IState> {
-  ttabGroupTitleInputRef: react.RefObject<Input>;
-
   emptyState: IState;
+  testState: IState;
 
   constructor(props: IProps) {
     super(props);
 
-    this.ttabGroupTitleInputRef = React.createRef();
-
     this.emptyState = {
       ttab_groups: [],
+      search_item: "",
+    };
+
+    this.testState = {
+      ttab_groups: [
+        {
+          id: -1,
+          collapsed: true,
+          color: "red",
+          created_at: new Date().getTime(),
+          updated_at: new Date().getTime(),
+          title: "test tab group",
+          tabs: [
+            {
+              fav_icon_url: "https://www.bing.com/sa/simg/favicon-2x.ico",
+              id: -1,
+              title: "bing",
+              url: "http://www.bing.com",
+            },
+            {
+              fav_icon_url: "https://www.bing.com/sa/simg/favicon-2x.ico",
+              id: -1,
+              title: "bing",
+              url: "http://www.bing.com",
+            },
+          ],
+        },
+      ],
       search_item: "",
     };
 
@@ -73,15 +108,14 @@ class App extends Component<IProps, IState> {
           chrome.storage.local.set({ [APP_STATE_KEY]: this.emptyState });
         }
       });
+    } else {
+      this.setState(this.testState);
     }
   }
 
   // callback to save tabs in the current active window
   handleSaveTabs = () => {
     let title = defaultTTabGroupTitle();
-    this.ttabGroupTitleInputRef.current &&
-      this.ttabGroupTitleInputRef.current.state.value &&
-      (title = this.ttabGroupTitleInputRef.current.state.value);
 
     let m = new Map<Number, TTabGroup>(); // tab group id ==> TTabGroup
     let now = new Date().getTime();
@@ -120,7 +154,7 @@ class App extends Component<IProps, IState> {
 
                 m.set(tg.id, {
                   id: tg.id,
-                  collapsed: tg.collapsed,
+                  collapsed: true, // collapse tab group by default
                   color: tg.color,
                   title: tg.title || "",
                   tabs: ttabs,
@@ -261,7 +295,6 @@ class App extends Component<IProps, IState> {
                 { tabIds: tabIds, createProperties: { windowId: wd.id } },
                 (groupId) => {
                   chrome.tabGroups.update(groupId, {
-                    collapsed: false,
                     color:
                       tgWaitingForRestore.color as chrome.tabGroups.ColorEnum,
                     title: tgWaitingForRestore.title,
@@ -325,6 +358,11 @@ class App extends Component<IProps, IState> {
     }));
   }
 
+  handleCollapse(tgTitle: string, e: any) {
+    console.log(tgTitle);
+    console.log(e);
+  }
+
   handleSearch = (e: { target: { value: string } }) => {
     this.setState({
       search_item: e.target.value,
@@ -339,6 +377,38 @@ class App extends Component<IProps, IState> {
         tg.title.toLocaleLowerCase().includes(keyword.toLocaleLowerCase())
       );
     }
+
+    const CollapseBtn = (props: any) => {
+      let tgTitle = props.title;
+
+      let collapseTabGroup = () => {
+        let i = ttab_groups.findIndex((tg) => tg.title === tgTitle);
+        ttab_groups[i].collapsed = !ttab_groups[i].collapsed;
+        this.setState({ ttab_groups: ttab_groups });
+      };
+
+      if (props.collapsed) {
+        return (
+          <Button
+            icon={<RightOutlined />}
+            onClick={() => {
+              collapseTabGroup();
+            }}
+            size="small"
+          ></Button>
+        );
+      } else {
+        return (
+          <Button
+            icon={<DownOutlined />}
+            onClick={() => {
+              collapseTabGroup();
+            }}
+            size="small"
+          ></Button>
+        );
+      }
+    };
 
     return (
       <div className="App">
@@ -415,6 +485,10 @@ class App extends Component<IProps, IState> {
                       </Col>
                       <Col span="18">
                         <Row justify="end">
+                          <CollapseBtn
+                            title={tg.title}
+                            collapsed={tg.collapsed}
+                          />
                           <Button
                             icon={<RollbackOutlined />}
                             size="small"
@@ -442,33 +516,34 @@ class App extends Component<IProps, IState> {
                 ),
               }}
             >
-              {tg.tabs.map((tab, idx) => (
-                <TabPane
-                  tab={
-                    <div className="tab-list-wrapper">
-                      <Row>
-                        <Col span="1" style={{ marginTop: "3px" }}>
-                          <Row justify="start">
-                            <Image width={16} src={tab.fav_icon_url} />
-                          </Row>
-                        </Col>
-                        <Col offset={1} span="22">
-                          <Row justify="start">
-                            <Tooltip
-                              title={trimQueryAndHash(tab.url)}
-                              color={tooltipColor}
-                              mouseEnterDelay={tooltipPopupDelay}
-                            >
-                              <a href={tab.url}>{tab.title}</a>
-                            </Tooltip>
-                          </Row>
-                        </Col>
-                      </Row>
-                    </div>
-                  }
-                  key={`${tgKey}-tab-${idx + 1}`}
-                ></TabPane>
-              ))}
+              {!tg.collapsed &&
+                tg.tabs.map((tab, idx) => (
+                  <TabPane
+                    tab={
+                      <div className="tab-list-wrapper">
+                        <Row>
+                          <Col span="1" style={{ marginTop: "3px" }}>
+                            <Row justify="start">
+                              <Image width={16} src={tab.fav_icon_url} />
+                            </Row>
+                          </Col>
+                          <Col offset={1} span="22">
+                            <Row justify="start">
+                              <Tooltip
+                                title={trimQueryAndHash(tab.url)}
+                                color={tooltipColor}
+                                mouseEnterDelay={tooltipPopupDelay}
+                              >
+                                <a href={tab.url}>{tab.title}</a>
+                              </Tooltip>
+                            </Row>
+                          </Col>
+                        </Row>
+                      </div>
+                    }
+                    key={`${tgKey}-tab-${idx + 1}`}
+                  ></TabPane>
+                ))}
             </Tabs>
           );
         })}
