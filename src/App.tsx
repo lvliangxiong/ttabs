@@ -9,6 +9,7 @@ import {
   Tag,
   Image,
   Tabs,
+  message,
 } from "antd";
 import {
   RollbackOutlined,
@@ -204,20 +205,29 @@ class App extends Component<IProps, IState> {
 
                 // Update chrome local storage
                 chrome.storage.local.get(APP_STATE_KEY, (data) => {
-                  chrome.storage.local.set({
-                    [APP_STATE_KEY]: {
-                      ttab_groups: [
-                        ...tgsWaitingForSaving,
-                        // tab group with the same title will be override
-                        ...data[APP_STATE_KEY].ttab_groups.filter(
-                          (group: TTabGroup) =>
-                            !tgsWaitingForSaving
-                              .map((tg) => tg.title)
-                              .includes(group.title)
-                        ),
-                      ],
+                  chrome.storage.local.set(
+                    {
+                      [APP_STATE_KEY]: {
+                        ttab_groups: [
+                          ...tgsWaitingForSaving,
+                          // tab group with the same title will be override
+                          ...data[APP_STATE_KEY].ttab_groups.filter(
+                            (group: TTabGroup) =>
+                              !tgsWaitingForSaving
+                                .map((tg) => tg.title)
+                                .includes(group.title)
+                          ),
+                        ],
+                      },
                     },
-                  });
+                    () => {
+                      // obviate the error 'document is not defined'
+                      // when saving tabs by shortcut
+                      if (typeof document !== "undefined") {
+                        message.info("successfully saved", 0.5);
+                      }
+                    }
+                  );
                 });
 
                 // Update App's state
