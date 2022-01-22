@@ -12,5 +12,22 @@ chrome.commands.onCommand.addListener((command, tab) => {
   switch (command) {
     case "Save Tabs":
       app.handleSaveTabs();
+      chrome.notifications.create(
+        "saved success",
+        {
+          type: "basic",
+          iconUrl: "/ttabs_128.png",
+          title: "TTabs",
+          message: "tabs saved successfully",
+        },
+        (notificationId) => {
+          setTimeout(
+            () => {
+              chrome.notifications.clear(notificationId);
+            },
+            200 // ms
+          );
+        }
+      );
   }
 });
