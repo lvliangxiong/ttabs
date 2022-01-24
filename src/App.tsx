@@ -30,6 +30,7 @@ const tooltipPopupDelay = 0.5;
 interface IState {
   ttab_groups: TTabGroup[];
   search_item: string;
+  titleInput: TabGroupTitleInput;
 }
 
 interface TTabGroup {
@@ -49,6 +50,11 @@ interface TTab {
   url: string;
 }
 
+interface TabGroupTitleInput {
+  index: number;
+  value: string;
+}
+
 const APP_STATE_KEY = "state";
 
 interface IProps {}
@@ -56,6 +62,7 @@ interface IProps {}
 class App extends Component<IProps, IState> {
   emptyState: IState;
   testState: IState;
+  titleInput: any;
 
   constructor(props: IProps) {
     super(props);
@@ -63,6 +70,7 @@ class App extends Component<IProps, IState> {
     this.emptyState = {
       ttab_groups: [],
       search_item: "",
+      titleInput: { index: -1, value: "" },
     };
 
     this.testState = {
@@ -91,6 +99,7 @@ class App extends Component<IProps, IState> {
         },
       ],
       search_item: "",
+      titleInput: { index: -1, value: "" },
     };
 
     // State init, shouldn't use setState method
@@ -379,8 +388,50 @@ class App extends Component<IProps, IState> {
     });
   };
 
+  saveTitleInputRef = (input: any) => {
+    this.titleInput = input;
+  };
+
+  handleTitleInputChange = (e: any) => {
+    this.setState((state, _props) => ({
+      titleInput: {
+        index: state.titleInput.index,
+        value: e.target.value,
+      },
+    }));
+  };
+
+  handleTitleInputConfirm = () => {
+    const {
+      titleInput: { index, value },
+    } = this.state;
+
+    this.setState(({ ttab_groups, search_item }) => {
+      return {
+        ttab_groups: ((ttab_groups[index].title = value), ttab_groups),
+        search_item: search_item,
+        titleInput: { index: -1, value: "" },
+      };
+    });
+
+    chrome &&
+      chrome.storage &&
+      chrome.storage.local.get(APP_STATE_KEY, (data) => {
+        chrome.storage.local.set({
+          [APP_STATE_KEY]: {
+            ttab_groups: [
+              ...data[APP_STATE_KEY].ttab_groups.map(
+                (tg: TTabGroup, i: number) =>
+                  i === index ? ((tg.title = value), tg) : tg
+              ),
+            ],
+          },
+        });
+      });
+  };
+
   render(): react.ReactNode {
-    let { ttab_groups, search_item: keyword } = this.state;
+    let { ttab_groups, search_item: keyword, titleInput } = this.state;
 
     if (keyword) {
       ttab_groups = ttab_groups.filter((tg) =>
@@ -461,16 +512,22 @@ class App extends Component<IProps, IState> {
           </Col>
         </Row>
 
-        <Input
-          type="text"
-          style={{ width: "450px", margin: "10px 0px 10px 20px" }}
-          onChange={this.handleSearch}
-          placeholder="search in the tab group title"
-        ></Input>
+        {
+          // show search box when ttab_groups.length !== 0 or keyword !== ""
+          (ttab_groups.length || keyword) && (
+            <Input
+              type="text"
+              style={{ width: "450px", margin: "10px 0px 10px 20px" }}
+              onChange={this.handleSearch}
+              placeholder="search in the tab group title"
+            ></Input>
+          )
+        }
 
         {/* TTabGroup display */}
         {ttab_groups.map((tg, i) => {
           const tgKey = `tg-${i + 1}`;
+          const { index: titleInputIndex, value: titleInputValue } = titleInput;
           return (
             // TTabGroup
             <Tabs
@@ -489,7 +546,42 @@ class App extends Component<IProps, IState> {
                             color={tooltipColor}
                             mouseEnterDelay={tooltipPopupDelay}
                           >
-                            <Tag color={tg.color}> {tg.title}</Tag>
+                            {i === titleInputIndex ? (
+                              <Input
+                                ref={this.saveTitleInputRef}
+                                key={tgKey}
+                                size="small"
+                                value={titleInputValue}
+                                onChange={this.handleTitleInputChange}
+                                onBlur={this.handleTitleInputConfirm}
+                                onPressEnter={this.handleTitleInputConfirm}
+                              />
+                            ) : (
+                              <Tag
+                                color={tg.color}
+                                key={tgKey}
+                                style={{ userSelect: "none" }}
+                              >
+                                <span
+                                  onDoubleClick={(e) => {
+                                    this.setState(
+                                      {
+                                        titleInput: {
+                                          index: i,
+                                          value: tg.title,
+                                        },
+                                      },
+                                      () => {
+                                        this.titleInput.focus();
+                                      }
+                                    );
+                                    e.preventDefault();
+                                  }}
+                                >
+                                  {tg.title}
+                                </span>
+                              </Tag>
+                            )}
                           </Tooltip>
                         </Row>
                       </Col>
