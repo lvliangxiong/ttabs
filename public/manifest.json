@@ -2,7 +2,7 @@
   "name": "TTabs",
   "author": "LiangxiongLyu",
   "description": "Stash and restore your tab groups with ease! Go to https://github.com/lvliangxiong/ttabs for more information.",
-  "version": "0.2.9",
+  "version": "0.3.0",
   "manifest_version": 3,
   "action": {
     "default_popup": "index.html",
@@ -20,13 +20,20 @@
     "64": "/ttabs_64.png",
     "128": "/ttabs_128.png"
   },
-  "permissions": ["storage", "tabs", "tabGroups", "activeTab", "notifications"],
+  "permissions": [
+    "storage",
+    "tabs",
+    "sessions",
+    "tabGroups",
+    "activeTab",
+    "notifications"
+  ],
   "commands": {
-    "Save Tabs": {
+    "Save Tab Groups": {
       "suggested_key": {
         "mac": "MacCtrl+S"
       },
-      "description": "Save tabs within current window"
+      "description": "Save all alive tabs groups"
     },
     "_execute_action": {
       "suggested_key": {

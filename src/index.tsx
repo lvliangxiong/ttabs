@@ -1,12 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import "./index.less";
-import App from "./App";
+import TTabs from "./TTabs";
 import reportWebVitals from "./reportWebVitals";
+import "./index.less";
 
 ReactDOM.render(
   <React.StrictMode>
-    <App />
+    <TTabs />
   </React.StrictMode>,
   document.getElementById("root")
 );

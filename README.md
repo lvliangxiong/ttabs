@@ -1,6 +1,6 @@
-# Ttabs
+# ![ttab_logo](public/ttabs_32.png) Ttabs
 
-This is a chrome extension for managing your tabs.
+A chrome extension designed for tab group management.
 
 ## Installation
 
@@ -19,14 +19,10 @@ npm run build
 This extension is available in the [release](https://github.com/lvliangxiong/ttabs/releases) page in a form of `.zip` file.
 
 1. Download and unzip the file.
-2. Install by `Load unpacked` like above.
+2. Install by `Load unpacked` just like above.
 
 ## Upgrade
 
 ‼️ Backup your tabs before update the extension, no compatibility is guaranteed between beta versions.
 
 Upgrading is as simple as override the installed extension folder with the newer one.
-
-## TODO
-
-- [ ] custom tab group title
