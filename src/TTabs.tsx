@@ -10,6 +10,7 @@ import {
   Space,
   Badge,
   Spin,
+  Popover,
 } from "antd";
 import {
   DeleteOutlined,
@@ -17,6 +18,7 @@ import {
   ReloadOutlined,
   CloseCircleFilled,
   LoadingOutlined,
+  ExpandOutlined,
 } from "@ant-design/icons";
 import "antd/dist/antd.min.css";
 import "./TTabs.less";
@@ -106,6 +108,11 @@ class TTabs extends React.Component<{}, TTabsState> {
   reload = () => {
     const keyword = this.state.searchKeyword;
     this.search(keyword);
+  };
+
+  expand = () => {
+    // Opens extension popup in a new tab
+    chrome.tabs.create({ url: chrome.runtime.getURL("index.html") });
   };
 
   handleClearAll = () => {
@@ -251,6 +258,15 @@ class TTabs extends React.Component<{}, TTabsState> {
             <Col span={12}>
               <Row justify="end">
                 <Space>
+                  <Col>
+                    <Popover content="open extension in a new tab">
+                      <Button
+                        size="small"
+                        icon={<ExpandOutlined />}
+                        onClick={this.expand}
+                      ></Button>
+                    </Popover>
+                  </Col>
                   <Col>
                     <Button
                       size="small"
