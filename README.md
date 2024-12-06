@@ -1,3 +1,5 @@
+> Currently, I prefer [Arc](https://arc.net/).
+
 # ![ttab_logo](public/ttabs_32.png) Ttabs
 
 A chrome extension designed for tab group management.
